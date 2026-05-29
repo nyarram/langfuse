@@ -488,6 +488,43 @@ describe("MCP public API tools", () => {
     )) as { id: string; name: string };
     expect(dataset.name).toBe(datasetName);
 
+    const renamedDatasetName = `mcp-dataset-renamed-${uuidv4()}`;
+    const renamedDataset = (await handleUpsertDataset(
+      {
+        id: dataset.id,
+        name: renamedDatasetName,
+        description: "Renamed MCP dataset",
+      },
+      context,
+    )) as { id: string; name: string; description: string };
+    expect(renamedDataset).toMatchObject({
+      id: dataset.id,
+      name: renamedDatasetName,
+      description: "Renamed MCP dataset",
+    });
+
+    await expect(
+      handleUpsertDataset(
+        {
+          id: "",
+          name: `mcp-dataset-empty-id-${uuidv4()}`,
+        },
+        context,
+      ),
+    ).rejects.toThrow("Validation failed");
+
+    const conflictingDatasetName = `mcp-dataset-conflict-${uuidv4()}`;
+    await handleUpsertDataset({ name: conflictingDatasetName }, context);
+    await expect(
+      handleUpsertDataset(
+        {
+          id: dataset.id,
+          name: conflictingDatasetName,
+        },
+        context,
+      ),
+    ).rejects.toThrow("Dataset name already in use");
+
     const datasets = (await handleListDatasets(
       { page: 1, limit: 10 },
       context,
@@ -496,7 +533,7 @@ describe("MCP public API tools", () => {
 
     await expect(
       handleGetDataset({ datasetId: dataset.id }, context),
-    ).resolves.toMatchObject({ id: dataset.id, name: datasetName });
+    ).resolves.toMatchObject({ id: dataset.id, name: renamedDatasetName });
 
     const datasetItem = (await handleUpsertDatasetItem(
       {
@@ -506,7 +543,7 @@ describe("MCP public API tools", () => {
       },
       context,
     )) as { id: string; datasetName: string };
-    expect(datasetItem.datasetName).toBe(datasetName);
+    expect(datasetItem.datasetName).toBe(renamedDatasetName);
 
     const datasetItems = (await handleListDatasetItems(
       { datasetId: dataset.id, page: 1, limit: 10 },
@@ -516,7 +553,10 @@ describe("MCP public API tools", () => {
 
     await expect(
       handleGetDatasetItem({ datasetItemId: datasetItem.id }, context),
-    ).resolves.toMatchObject({ id: datasetItem.id, datasetName });
+    ).resolves.toMatchObject({
+      id: datasetItem.id,
+      datasetName: renamedDatasetName,
+    });
 
     const runName = `mcp-run-50% accuracy %20 ${uuidv4()}`;
     const runItem = (await handleCreateDatasetRunItem(

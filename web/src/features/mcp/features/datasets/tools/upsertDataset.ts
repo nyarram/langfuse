@@ -7,7 +7,10 @@ import {
 import { defineTool } from "../../../core/define-tool";
 import { runMcpTool } from "../../../core/run-mcp-tool";
 
+const idField = z.string().min(1).optional();
+
 const UpsertDatasetBaseSchema = z.object({
+  id: idField,
   name: z.string(),
   description: z.string().optional(),
   metadata: z.any().optional(),
@@ -15,12 +18,16 @@ const UpsertDatasetBaseSchema = z.object({
   expectedOutputSchema: z.any().optional(),
 });
 
+const UpsertDatasetInputSchema = PostDatasetsV2Body.extend({
+  id: idField,
+});
+
 export const [upsertDatasetTool, handleUpsertDataset] = defineTool({
   name: "upsertDataset",
   description:
     "Upsert a dataset, a named collection of input and optional expected-output examples for experiments and evaluations.",
   baseSchema: UpsertDatasetBaseSchema,
-  inputSchema: PostDatasetsV2Body,
+  inputSchema: UpsertDatasetInputSchema,
   handler: async (input, context) =>
     runMcpTool({
       spanName: "mcp.datasets.upsert",
